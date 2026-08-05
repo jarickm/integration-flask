@@ -1,0 +1,707 @@
+<!-- templates/index.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Bento Panel Design Layout */
+    .bento-card {
+        background: var(--bento-bg);
+        border: 1px solid var(--bento-border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.01);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .bento-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.03);
+    }
+
+    .metric-title {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 6px;
+    }
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-color);
+        letter-spacing: -0.5px;
+    }
+    .metric-footer {
+        margin-top: 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Explanation Banner card styling */
+    .workflow-info-card {
+        background: rgba(99, 102, 241, 0.05);
+        border: 1px dashed rgba(99, 102, 241, 0.25);
+        border-radius: 14px;
+        padding: 16px 20px;
+    }
+
+    /* Standardized Premium Action Buttons */
+    .btn-cci {
+        background: var(--bento-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        color: var(--text-color);
+        padding: 10px 18px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+        transition: var(--transition);
+        cursor: pointer;
+    }
+    .btn-cci:hover {
+        background: var(--primary);
+        color: white !important;
+        border-color: var(--primary);
+    }
+    .btn-cci i {
+        font-size: 0.9rem;
+    }
+    .btn-cci:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: var(--body-bg) !important;
+        color: var(--text-muted) !important;
+        border-color: var(--bento-border) !important;
+    }
+
+    /* Filter Strip styling */
+    .filter-bar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .filter-input {
+        background: var(--body-bg);
+        border: 1px solid var(--bento-border);
+        border-radius: 12px;
+        padding: 9px 14px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        outline: none;
+        color: var(--text-color);
+        transition: all 0.2s ease;
+    }
+    .filter-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    /* Status workflow badges */
+    .status-badge {
+        font-size: 0.68rem;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .badge-unassigned { background-color: var(--bg-blue); color: var(--c-blue); }
+    .badge-investigating { background-color: var(--bg-purple); color: var(--c-purple); }
+    .badge-awaiting { background-color: var(--bg-orange); color: var(--c-orange); }
+    .badge-reconciled { background-color: var(--bg-green); color: var(--c-green); }
+
+    /* Interactive Table row clickable layouts */
+    .clickable-row {
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+    .clickable-row:hover td {
+        background-color: var(--body-bg) !important;
+    }
+
+    /* --- FULL WORKSPACE OVERLAY SHEET --- */
+    .saas-drawer {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: calc(100% - 290px);
+        height: 100vh;
+        background: var(--bento-bg);
+        border-left: 1px solid var(--bento-border);
+        box-shadow: -15px 0 45px rgba(0, 0, 0, 0.06);
+        z-index: 2100;
+        padding: 40px;
+        transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+    }
+    .saas-drawer.open {
+        right: 0;
+    }
+    .drawer-backdrop {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.2);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: none;
+        z-index: 2050;
+    }
+    .drawer-backdrop.show {
+        display: block;
+    }
+
+    @media (max-width: 992px) {
+        .saas-drawer {
+            width: 100%;
+        }
+    }
+
+    /* Ledger table style overrides */
+    .coolaire-table th {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--bento-border);
+        padding: 16px 14px;
+        background-color: var(--bento-bg);
+        font-weight: 800;
+    }
+    .coolaire-table td {
+        padding: 16px 14px;
+        border-bottom: 1px solid var(--bento-border);
+        font-size: 0.85rem;
+        vertical-align: middle;
+        color: var(--text-color);
+    }
+    .coolaire-table tr:last-child td {
+        border-bottom: none;
+    }
+</style>
+
+<!-- Slide Drawer Backdrop -->
+<div class="drawer-backdrop" id="backdrop" onclick="closeWorkflowDrawer()"></div>
+
+<!-- Slide Drawer Panel (Full Workspace Layout) -->
+<div class="saas-drawer" id="workflowDrawer">
+    <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+        <div>
+            <h4 class="fw-800 m-0" style="font-size: 1.3rem; color: var(--text-color); letter-spacing: -0.5px;">Reconcile Customer Balance</h4>
+            <span id="drawerTitleID" class="text-muted fw-700 small" style="font-size: 0.75rem;">ID: #0000</span>
+        </div>
+        <button class="btn-close" style="font-size: 0.85rem;" onclick="closeWorkflowDrawer()"></button>
+    </div>
+
+    <!-- Multi-Column Grid Layout inside the Wide Workspace Sheet -->
+    <form id="drawerTaskForm" onsubmit="commitTaskForm(event)" class="d-flex flex-column gap-4 overflow-y-auto pe-1" style="flex-grow: 1;">
+        <input type="hidden" name="customer_id" id="taskCustId">
+
+        <!-- Standard Read-Only NetSuite Parameters -->
+        <div class="p-3 mb-1 border rounded-3" style="background: var(--body-bg); border-color: var(--bento-border) !important;">
+            <div class="row g-3">
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Subsidiary</span>
+                    <strong id="taskSubsidiary" class="text-dark small d-block text-truncate" style="font-size: 0.85rem; color: var(--text-color) !important;">Loading...</strong>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Sales Representative</span>
+                    <strong id="taskSalesRep" class="text-dark small d-block text-truncate" style="font-size: 0.85rem; color: var(--text-color) !important;">Loading...</strong>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Account Currency</span>
+                    <strong id="taskCurrency" class="text-dark small d-block" style="font-size: 0.85rem; color: var(--text-color) !important;">PHP</strong>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Deposit Age</span>
+                    <strong id="taskAging" class="text-dark small d-block" style="font-size: 0.85rem; color: var(--text-color) !important;">Loading...</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Side Inputs -->
+            <div class="col-md-6 d-flex flex-column gap-3">
+                <div>
+                    <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Company Entity Name</label>
+                    <input type="text" id="taskCustName" class="form-control filter-input w-100" style="background: var(--body-bg); color: var(--text-muted);" readonly>
+                </div>
+
+                <div>
+                    <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Outstanding Deposit Balance</label>
+                    <input type="text" id="taskCustAmount" class="form-control filter-input w-100 fw-800" style="background: var(--body-bg); color: var(--c-green);" readonly>
+                </div>
+            </div>
+
+            <!-- Right Side Inputs -->
+            <div class="col-md-6 d-flex flex-column gap-3">
+                <div>
+                    <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Workflow Status</label>
+                    <select name="status" id="taskStatus" class="form-select filter-input w-100">
+                        <option value="Unassigned">Unassigned (Needs Triage)</option>
+                        <option value="Investigating">Investigating (Researching)</option>
+                        <option value="Awaiting Matching">Awaiting Matching (Pending Apply)</option>
+                        <option value="Reconciled">Reconciled (Completed)</option>
+                    </select>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Assignee</label>
+                        <select name="assigned_to" id="taskAssigned" class="form-select filter-input w-100">
+                            <option value="Unassigned">Unassigned</option>
+                            <option value="John Doe (Finance)">John Doe (Finance)</option>
+                            <option value="Sarah Smith (AR)">Sarah Smith (AR)</option>
+                            <option value="Michael Chen (Operations)">Michael Chen (Operations)</option>
+                        </select>
+                    </div>
+                    <div class="col-6">
+                        <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Priority</label>
+                        <select name="priority" id="taskPriority" class="form-select filter-input w-100">
+                            <option value="Low">Low</option>
+                            <option value="Medium">Medium</option>
+                            <option value="High">High</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Internal Worklog / Notes</label>
+            <textarea name="notes" id="taskNotes" class="form-control filter-input w-100" style="height: 140px;" placeholder="Add historical review references, matching documents, or notes..."></textarea>
+        </div>
+
+        <div class="mt-auto pt-4 border-top">
+            <button type="submit" class="btn w-100 fw-800 py-3" style="background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 0.9rem;">
+                <i class="fa-solid fa-cloud-arrow-up me-2"></i> Save Status Updates
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Header Controls Area -->
+<div class="row g-4 align-items-center mb-4">
+    <div class="col-md-6">
+        <h2 class="fw-800 m-0" style="letter-spacing: -1px; font-size: 1.5rem; color: var(--text-color);">Advances Terminal</h2>
+        <p class="text-muted small m-0 mt-1" style="font-size: 0.82rem; font-weight: 500;">Review, track, and assign outstanding NetSuite balances directly.</p>
+    </div>
+    <div class="col-md-6 text-md-end d-flex justify-content-md-end gap-2">
+        <button class="btn-cci" onclick="exportQueueToCSV()"><i class="fa-solid fa-file-export text-muted"></i> Export CSV</button>
+        <button class="btn-cci" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate text-muted"></i> Sync Now</button>
+    </div>
+</div>
+
+{% if is_mock_data %}
+<div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-3 py-3 px-4 mb-4" style="background: var(--bg-yellow); border-radius: 12px; border: 1px solid var(--bento-border) !important;">
+    <i class="fa-solid fa-triangle-exclamation text-warning fs-4"></i>
+    <div style="font-size: 0.82rem; color: var(--text-color); font-weight: 600;">
+        <strong>Local Mode Active:</strong> Operating using fallback data. Place your <code>private.pem</code> certificates to activate the direct NetSuite pipeline.
+    </div>
+</div>
+{% endif %}
+
+<!-- Metrics Panel Layout -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Unapplied Balance</div>
+            <div class="metric-value mt-2">₱{{ "{:,.2f}".format(total_amount) }}</div>
+            <div class="metric-footer text-muted"><i class="fa-solid fa-vault"></i> NetSuite Hold</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Active Customer Accounts</div>
+            <div class="metric-value mt-2">{{ customer_count }}</div>
+            <div class="metric-footer text-muted"><i class="fa-solid fa-users"></i> Unreconciled Entities</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Unassigned Tasks</div>
+            <div class="metric-value mt-2" style="color: var(--c-red);">{{ unassigned_count }}</div>
+            <div class="metric-footer text-danger"><i class="fa-solid fa-circle-exclamation"></i> Triage Needed</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Under Investigation</div>
+            <div class="metric-value mt-2" style="color: var(--c-orange);">{{ investigating_count }}</div>
+            <div class="metric-footer text-warning"><i class="fa-solid fa-magnifying-glass-dollar"></i> Active Reviews</div>
+        </div>
+    </div>
+</div>
+
+<!-- Doughnut Chart and Legend Panel -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="bento-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-800 m-0" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Balance Exposure Concentration (Top 10 Customers)</h5>
+                <span class="badge bg-light text-dark fw-800" style="font-size: 0.65rem; border: 1px solid var(--bento-border);">Proportional Share</span>
+            </div>
+
+            <div class="row align-items-center">
+                <div class="col-md-5 d-flex justify-content-center">
+                    <div style="height: 240px; width: 240px; position: relative;">
+                        <canvas id="highVolumeAdvancesChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="row g-2" id="chartLegendContainer">
+                        <!-- Legend keys will auto-generate dynamically below via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Operational Ledger Block -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="bento-card">
+
+            <!-- Explanation Card block to clarify the 'Unassigned' default status -->
+            <div class="workflow-info-card d-flex align-items-start gap-3 mb-4">
+                <i class="fa-solid fa-circle-info text-primary mt-1" style="font-size: 1.1rem;"></i>
+                <div style="font-size: 0.8rem; color: var(--text-color); font-weight: 500;">
+                    <strong class="d-block mb-1" style="color: var(--primary);">Understanding Unassigned Statuses</strong>
+                    Every unapplied deposit discovered in NetSuite begins in an <strong>Unassigned</strong> state. These balances represent cash received from clients that has not yet been reconciled against outstanding open invoices. Clicking a row lets you assign ownership and track its reconciliation.
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <h5 class="fw-800 m-0" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Operational Queue Ledger</h5>
+
+                <div class="filter-bar">
+                    <div class="position-relative">
+                        <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.75rem;"></i>
+                        <input type="text" id="ledgerSearchInput" onkeyup="resetToFirstPageAndFilter()" class="filter-input ps-4" style="width: 250px;" placeholder="Filter by Name or ID...">
+                    </div>
+
+                    <select id="statusSelectFilter" onchange="resetToFirstPageAndFilter()" class="filter-input select-filter">
+                        <option value="">All Statuses</option>
+                        <option value="Unassigned">Unassigned</option>
+                        <option value="Investigating">Investigating</option>
+                        <option value="Awaiting Matching">Awaiting Matching</option>
+                        <option value="Reconciled">Reconciled</option>
+                    </select>
+
+                    <select id="prioritySelectFilter" onchange="resetToFirstPageAndFilter()" class="filter-input select-filter">
+                        <option value="">All Priorities</option>
+                        <option value="High">High</option>
+                        <option value="Medium">Medium</option>
+                        <option value="Low">Low</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table coolaire-table m-0" id="ledgerTable">
+                    <thead>
+                        <tr>
+                            <th>Internal ID</th>
+                            <th>Customer Name</th>
+                            <th>Operational Assignee</th>
+                            <th>Workflow Priority</th>
+                            <th>Current Status</th>
+                            <th class="text-end">Deposit Balance</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in advances %}
+                        <tr class="clickable-row" data-status="{{ item.status }}" data-priority="{{ item.priority }}" onclick='openWorkflowDrawer({{ item | tojson | safe }})'>
+                            <td><span class="text-muted fw-800">#{{ item.id }}</span></td>
+                            <td>
+                                <div class="fw-800" style="color: var(--text-color); font-size: 0.85rem;">{{ item.name }}</div>
+                                <div class="text-muted extra-small" style="font-size: 0.75rem; font-weight: 500;">{{ item.email }}</div>
+                            </td>
+                            <td>
+                                <span class="fw-700 text-muted" style="font-size: 0.8rem;"><i class="fa-solid fa-circle-user me-1 text-secondary" style="font-size: 0.9rem;"></i> {{ item.assigned_to }}</span>
+                            </td>
+                            <td>
+                                {% if item.priority == 'High' %}
+                                    <span class="fw-800 text-danger" style="font-size: 0.8rem;"><i class="fa-solid fa-circle-exclamation me-1"></i> High</span>
+                                {% elif item.priority == 'Medium' %}
+                                    <span class="fw-700 text-warning" style="font-size: 0.8rem;"><i class="fa-solid fa-triangle-exclamation me-1"></i> Medium</span>
+                                {% else %}
+                                    <span class="fw-600 text-muted" style="font-size: 0.8rem;">Low</span>
+                                {% endif %}
+                            </td>
+                            <td>
+                                {% if item.status == 'Unassigned' %}
+                                    <span class="status-badge badge-unassigned"><i class="fa-solid fa-ban"></i> Unassigned</span>
+                                {% elif item.status == 'Investigating' %}
+                                    <span class="status-badge badge-investigating"><i class="fa-solid fa-magnifying-glass"></i> Investigating</span>
+                                {% elif item.status == 'Awaiting Matching' %}
+                                    <span class="status-badge badge-awaiting"><i class="fa-solid fa-hourglass-start"></i> Awaiting Match</span>
+                                {% elif item.status == 'Reconciled' %}
+                                    <span class="status-badge badge-reconciled"><i class="fa-solid fa-circle-check"></i> Reconciled</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end fw-800 text-success" style="font-size: 0.9rem;">
+                                ₱{{ "{:,.2f}".format(item.amount) }}
+                            </td>
+                            <td class="text-center" onclick="event.stopPropagation();">
+                                <span class="text-muted" style="font-size: 0.95rem; cursor: pointer;" onclick='openWorkflowDrawer({{ item | tojson | safe }})'>
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="7" class="text-center py-5 text-muted fw-600" style="font-size: 0.85rem;">
+                                No customer records currently match your operational filter parameters.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modern Pagination controls panel -->
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top flex-wrap gap-2">
+                <span id="paginationInfo" class="fw-700 text-muted" style="font-size: 0.78rem;">Showing 1 to 5 of 10 entries</span>
+                <div class="d-flex gap-1" id="paginationControls">
+                    <button class="btn-cci py-1 px-3" id="btnPrev" onclick="navigatePage(-1)" style="font-size: 0.75rem;"><i class="fa-solid fa-chevron-left me-1"></i> Prev</button>
+                    <button class="btn-cci py-1 px-3" id="btnNext" onclick="navigatePage(1)" style="font-size: 0.75rem;">Next <i class="fa-solid fa-chevron-right ms-1"></i></button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let initializedChart = null;
+
+    // Stateful pagination configuration
+    let currentPage = 1;
+    const recordsPerPage = 5; // Default display size
+
+    function renderDynamicChart() {
+        const ctx = document.getElementById('highVolumeAdvancesChart').getContext('2d');
+        if (initializedChart) {
+            initializedChart.destroy();
+        }
+
+        const labels = {{ chart_labels | tojson | safe }};
+        const dataValues = {{ chart_data | tojson | safe }};
+
+        const paletteColors = [
+            '#6366f1', '#0ea5e9', '#14b8a6', '#a855f7', '#f97316',
+            '#ec4899', '#eab308', '#22c55e', '#64748b', '#475569'
+        ];
+
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        const cutoutBorderColor = isDarkMode ? '#1e293b' : '#ffffff';
+
+        initializedChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: paletteColors,
+                    borderColor: cutoutBorderColor,
+                    borderWidth: 2,
+                    hoverOffset: 12
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '72%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        const legendContainer = document.getElementById('chartLegendContainer');
+        legendContainer.innerHTML = '';
+
+        labels.forEach((label, index) => {
+            const val = dataValues[index];
+            const color = paletteColors[index % paletteColors.length];
+
+            const itemElement = document.createElement('div');
+            itemElement.className = 'col-md-6 d-flex align-items-center mb-1';
+            itemElement.style.fontSize = '0.78rem';
+            itemElement.style.fontWeight = '700';
+            itemElement.innerHTML = `
+                <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; margin-right: 8px; flex-shrink: 0;"></div>
+                <div class="text-truncate flex-grow-1" style="color: var(--text-color);" title="${label}">${label}</div>
+                <div class="text-muted ps-2" style="font-size:0.75rem;">₱${val.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+            `;
+            legendContainer.appendChild(itemElement);
+        });
+    }
+
+    // Consolidated filtering and pagination execution
+    function updateLedgerTableDisplay() {
+        const queryText = document.getElementById("ledgerSearchInput").value.toUpperCase();
+        const activeStatus = document.getElementById("statusSelectFilter").value;
+        const activePriority = document.getElementById("prioritySelectFilter").value;
+
+        const tableBody = document.getElementById("ledgerTable").getElementsByTagName("tbody")[0];
+        const rows = Array.from(tableBody.getElementsByTagName("tr"));
+
+        // Phase 1: Identify row matching criteria
+        const matchingRows = rows.filter(row => {
+            if (row.cells.length < 5) return false;
+
+            const idColText = row.cells[0].textContent || row.cells[0].innerText;
+            const nameColText = row.cells[1].textContent || row.cells[1].innerText;
+            const rowStatus = row.getAttribute("data-status");
+            const rowPriority = row.getAttribute("data-priority");
+
+            const textSearchMatches = idColText.toUpperCase().includes(queryText) || nameColText.toUpperCase().includes(queryText);
+            const statusFilterMatches = !activeStatus || rowStatus === activeStatus;
+            const priorityFilterMatches = !activePriority || rowPriority === activePriority;
+
+            return textSearchMatches && statusFilterMatches && priorityFilterMatches;
+        });
+
+        // Hide all rows initially
+        rows.forEach(r => r.style.display = "none");
+
+        // Phase 2: Compute pagination bounds
+        const totalMatching = matchingRows.length;
+        const totalPages = Math.ceil(totalMatching / recordsPerPage) || 1;
+
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+
+        const startIndex = (currentPage - 1) * recordsPerPage;
+        const endIndex = Math.min(startIndex + recordsPerPage, totalMatching);
+
+        // Display rows in current page viewport slice
+        for (let i = startIndex; i < endIndex; i++) {
+            if (matchingRows[i]) {
+                matchingRows[i].style.display = "";
+            }
+        }
+
+        // Phase 3: Update pagination text and button states
+        const paginationInfo = document.getElementById("paginationInfo");
+        if (totalMatching > 0) {
+            paginationInfo.innerText = `Showing ${startIndex + 1} to ${endIndex} of ${totalMatching} entries`;
+        } else {
+            paginationInfo.innerText = "No entries matching filters found";
+        }
+
+        document.getElementById("btnPrev").disabled = (currentPage === 1);
+        document.getElementById("btnNext").disabled = (currentPage === totalPages);
+    }
+
+    function navigatePage(direction) {
+        currentPage += direction;
+        updateLedgerTableDisplay();
+    }
+
+    function resetToFirstPageAndFilter() {
+        currentPage = 1;
+        updateLedgerTableDisplay();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderDynamicChart();
+        updateLedgerTableDisplay(); // Run pagination calculations
+    });
+
+    window.addEventListener('themeChanged', () => {
+        renderDynamicChart();
+    });
+
+    // Drawer Panel Transitions
+    function openWorkflowDrawer(data) {
+        document.getElementById("taskCustId").value = data.id;
+        document.getElementById("drawerTitleID").innerText = "ID: #" + data.id;
+        document.getElementById("taskCustName").value = data.name;
+        document.getElementById("taskCustAmount").value = "₱" + data.amount.toLocaleString(undefined, {minimumFractionDigits: 2});
+
+        document.getElementById("taskSubsidiary").innerText = data.subsidiary || "N/A";
+        document.getElementById("taskSalesRep").innerText = data.salesrep || "House Account";
+        document.getElementById("taskCurrency").innerText = data.currency || "PHP";
+        document.getElementById("taskAging").innerText = (data.days_open || 0) + " Days Open";
+
+        document.getElementById("taskStatus").value = data.status || "Unassigned";
+        document.getElementById("taskAssigned").value = data.assigned_to || "Unassigned";
+        document.getElementById("taskPriority").value = data.priority || "Medium";
+        document.getElementById("taskNotes").value = data.notes || "";
+
+        document.getElementById("workflowDrawer").classList.add("open");
+        document.getElementById("backdrop").classList.add("show");
+    }
+
+    function closeWorkflowDrawer() {
+        document.getElementById("workflowDrawer").classList.remove("open");
+        document.getElementById("backdrop").classList.add("show");
+    }
+
+    function commitTaskForm(event) {
+        event.preventDefault();
+        const formElement = document.getElementById("drawerTaskForm");
+        const payloadData = new FormData(formElement);
+
+        fetch("/api/update_task", {
+            method: "POST",
+            body: payloadData
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.status === "success") {
+                closeWorkflowDrawer();
+                window.location.reload();
+            } else {
+                alert("An error occurred: " + result.message);
+            }
+        })
+        .catch(err => {
+            console.error("Local SQLite DB interface error:", err);
+        });
+    }
+
+    function exportQueueToCSV() {
+        const table = document.getElementById("ledgerTable");
+        const rows = table.querySelectorAll("tr");
+        let csvLines = [];
+
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].style.display === "none") continue;
+
+            let rowArray = [], cells = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cells.length - 1; j++) {
+                let formattedCell = cells[j].innerText.replace(/,/g, "").replace(/\n/g, " ").trim();
+                rowArray.push('"' + formattedCell + '"');
+            }
+            csvLines.push(rowArray.join(","));
+        }
+
+        const csvData = new Blob([csvLines.join("\n")], { type: "text/csv" });
+        const triggerLink = document.createElement("a");
+        triggerLink.download = "CCI_Advances_Workflow_Ledger.csv";
+        triggerLink.href = window.URL.createObjectURL(csvData);
+        triggerLink.style.display = "none";
+        document.body.appendChild(triggerLink);
+        triggerLink.click();
+        document.body.removeChild(triggerLink);
+    }
+</script>
+{% endblock %}

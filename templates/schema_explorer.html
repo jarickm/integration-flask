@@ -1,0 +1,404 @@
+<!-- templates/schema_explorer.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    .bento-card {
+        background: var(--bento-bg);
+        border: 1px solid var(--bento-border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.01);
+    }
+
+    .btn-cci {
+        background: var(--bento-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        color: var(--text-color);
+        padding: 8px 16px;
+        font-size: 0.78rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        transition: var(--transition);
+        cursor: pointer;
+    }
+    .btn-cci:hover {
+        background: var(--primary);
+        color: white !important;
+        border-color: var(--primary);
+    }
+
+    .schema-pill {
+        display: inline-flex;
+        align-items: center;
+        padding: 4px 10px;
+        border-radius: 6px;
+        font-family: monospace;
+        font-size: 0.78rem;
+        font-weight: 700;
+        background: rgba(99, 102, 241, 0.08);
+        color: var(--c-indigo);
+        border: 1px solid rgba(99, 102, 241, 0.2);
+    }
+
+    .connection-box {
+        background: var(--body-bg);
+        border-left: 3px solid var(--c-purple);
+        padding: 10px 14px;
+        border-radius: 8px;
+        margin-bottom: 8px;
+        font-size: 0.82rem;
+    }
+
+    /* Full workspace overlay sheet for column inspections */
+    .saas-drawer {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: calc(100% - 290px);
+        height: 100vh;
+        background: var(--bento-bg);
+        border-left: 1px solid var(--bento-border);
+        box-shadow: -15px 0 45px rgba(0, 0, 0, 0.08);
+        z-index: 2100;
+        padding: 40px;
+        transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+    }
+    .saas-drawer.open { right: 0; }
+    .drawer-backdrop {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.25);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: none;
+        z-index: 2050;
+    }
+    .drawer-backdrop.show { display: block; }
+
+    @media (max-width: 992px) {
+        .saas-drawer { width: 100%; }
+    }
+
+    .coolaire-table th {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--bento-border);
+        padding: 14px;
+        background-color: var(--bento-bg);
+        font-weight: 800;
+    }
+    .coolaire-table td {
+        padding: 16px 14px;
+        border-bottom: 1px solid var(--bento-border);
+        font-size: 0.85rem;
+        vertical-align: middle;
+        color: var(--text-color);
+    }
+    .clickable-row {
+        cursor: pointer;
+        transition: background-color 0.15s;
+    }
+    .clickable-row:hover td {
+        background-color: var(--body-bg) !important;
+    }
+
+    /* Code sandbox box */
+    .code-box {
+        background: #0f172a;
+        color: #38bdf8;
+        padding: 16px;
+        border-radius: 12px;
+        font-family: monospace;
+        font-size: 0.82rem;
+        line-height: 1.5;
+        overflow-x: auto;
+    }
+</style>
+
+<div class="drawer-backdrop" id="backdrop" onclick="closeSchemaDrawer()"></div>
+
+<!-- Slide Drawer Panel for Live Column & ERD Inspection -->
+<div class="saas-drawer" id="schemaDrawer">
+    <div class="d-flex justify-content-between align-items-center pb-3 mb-3 border-bottom">
+        <div>
+            <h4 class="fw-800 m-0" style="font-size: 1.3rem; color: var(--text-color); letter-spacing: -0.5px;" id="drawerDisplayTitle">Table Inspection</h4>
+            <span class="schema-pill mt-1" id="drawerSQLName">table_name</span>
+        </div>
+        <button class="btn-close" style="font-size: 0.85rem;" onclick="closeSchemaDrawer()"></button>
+    </div>
+
+    <div class="d-flex flex-column gap-4 overflow-y-auto pe-1" style="flex-grow: 1;">
+
+        <!-- Description -->
+        <div style="font-size: 0.88rem; color: var(--text-muted); font-weight: 500;" id="drawerDescription">
+            Loading description...
+        </div>
+
+        <!-- ERD & Relational Connections Section -->
+        <div id="connectionsContainer" class="d-none">
+            <h6 class="fw-800 text-uppercase text-muted" style="font-size: 0.7rem; letter-spacing: 0.8px;">Known ERD Relational Connections</h6>
+            <div id="connectionsList" class="mt-2"></div>
+        </div>
+
+        <!-- Live SuiteQL Query Generator Sandbox -->
+        <div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-800 text-uppercase text-muted m-0" style="font-size: 0.7rem; letter-spacing: 0.8px;">Live SuiteQL Sandbox Snippet</h6>
+                <span class="text-primary fw-700" style="font-size: 0.7rem; cursor: pointer;" onclick="copySQLSnippet()"><i class="fa-solid fa-copy me-1"></i> Copy SQL</span>
+            </div>
+            <div class="code-box" id="sqlSandboxCode">
+                SELECT * FROM table_name WHERE isinactive = 'F'
+            </div>
+        </div>
+
+        <!-- Live Column Auto-Detector Grid -->
+        <div>
+            <div class="d-flex justify-content-between align-items-center mb-2">
+                <h6 class="fw-800 text-uppercase text-muted m-0" style="font-size: 0.7rem; letter-spacing: 0.8px;">Auto-Detected Table Columns & Fields</h6>
+                <span class="badge bg-light text-dark fw-800" id="columnCountBadge" style="font-size: 0.7rem; border: 1px solid var(--bento-border);">Scanning...</span>
+            </div>
+
+            <div id="columnLoadingState" class="text-center py-4 text-muted fw-600" style="font-size: 0.85rem;">
+                <i class="fa-solid fa-spinner fa-spin me-2 text-primary"></i> Interrogating live NetSuite Database Schema...
+            </div>
+
+            <div id="columnErrorState" class="alert alert-danger d-none" style="font-size: 0.82rem; border-radius: 12px;"></div>
+
+            <div class="table-responsive d-none" id="columnTableWrapper">
+                <table class="table coolaire-table m-0">
+                    <thead>
+                        <tr>
+                            <th style="width: 50px;">#</th>
+                            <th>Field Name / Column ID</th>
+                            <th>Syntax Usage</th>
+                        </tr>
+                    </thead>
+                    <tbody id="columnTableBody">
+                        <!-- Dynamic Columns will be inserted here via AJAX -->
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Main Workspace Layout Header -->
+<div class="row g-4 align-items-center mb-4">
+    <div class="col-md-7">
+        <h2 class="fw-800 m-0" style="letter-spacing: -1px; font-size: 1.5rem; color: var(--text-color);">NetSuite Schema & ERD Explorer</h2>
+        <p class="text-muted small m-0 mt-1" style="font-size: 0.82rem; font-weight: 500;">Auto-detect custom records, view table relationships, and inspect live column keys.</p>
+    </div>
+    <div class="col-md-5 text-md-end">
+        <button class="btn-cci py-2 px-3" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate text-muted"></i> Re-Scan NetSuite Registry</button>
+    </div>
+</div>
+
+<!-- Table Category Switches & Filters -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="bento-card">
+
+            <ul class="nav nav-pills mb-4 gap-2 border-bottom pb-3" id="schemaTab" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active fw-800" id="core-tab" data-bs-toggle="pill" data-bs-target="#core-tables" type="button" role="tab" style="border-radius: 12px; font-size: 0.85rem;">
+                        <i class="fa-solid fa-database me-2 text-primary"></i> Core ERP & Financial Tables ({{ core_tables|length }})
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link fw-800" id="custom-tab" data-bs-toggle="pill" data-bs-target="#custom-tables" type="button" role="tab" style="border-radius: 12px; font-size: 0.85rem;">
+                        <i class="fa-solid fa-layer-group me-2 text-warning"></i> Live Custom Records & Bundles ({{ custom_tables|length }})
+                    </button>
+                </li>
+            </ul>
+
+            <div class="tab-content" id="schemaTabContent">
+
+                <!-- CORE TABLES TAB -->
+                <div class="tab-pane fade show active" id="core-tables" role="tabpanel" tabindex="0">
+                    <div class="table-responsive">
+                        <table class="table coolaire-table m-0">
+                            <thead>
+                                <tr>
+                                    <th>SQL Table Identifier</th>
+                                    <th>Table Description & Category</th>
+                                    <th>ERD Relational Links</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in core_tables %}
+                                <tr class="clickable-row" onclick='openSchemaDrawer({{ item | tojson | safe }})'>
+                                    <td><span class="schema-pill">{{ item.table_name }}</span></td>
+                                    <td>
+                                        <div class="fw-800" style="color: var(--text-color); font-size: 0.88rem;">{{ item.display_name }}</div>
+                                        <div class="text-muted extra-small" style="font-size: 0.75rem;">{{ item.description }}</div>
+                                    </td>
+                                    <td>
+                                        {% if item.connections %}
+                                            <span class="badge bg-light text-dark fw-700 border" style="font-size: 0.72rem;">
+                                                <i class="fa-solid fa-project-diagram me-1 text-primary"></i> {{ item.connections|length }} Active Joins
+                                            </span>
+                                        {% else %}
+                                            <span class="text-muted small">Standalone</span>
+                                        {% endif %}
+                                    </td>
+                                    <td class="text-center" onclick="event.stopPropagation();">
+                                        <button class="btn-cci py-1 px-3" onclick='openSchemaDrawer({{ item | tojson | safe }})'>
+                                            <i class="fa-solid fa-magnifying-glass me-1 text-muted"></i> Inspect Columns
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- CUSTOM TABLES TAB (Auto-Detected) -->
+                <div class="tab-pane fade" id="custom-tables" role="tabpanel" tabindex="0">
+                    {% if custom_tables|length == 0 %}
+                    <div class="text-center py-5 text-muted fw-600" style="font-size: 0.9rem;">
+                        <i class="fa-solid fa-triangle-exclamation text-warning me-2"></i> No live custom records were returned. Ensure your role has permission to query <code>customrecordtype</code>.
+                    </div>
+                    {% else %}
+                    <div class="table-responsive">
+                        <table class="table coolaire-table m-0">
+                            <thead>
+                                <tr>
+                                    <th>Script ID (SQL Table)</th>
+                                    <th>Custom Table Name</th>
+                                    <th>Registry ID</th>
+                                    <th class="text-center">Action</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {% for item in custom_tables %}
+                                <tr class="clickable-row" onclick='openSchemaDrawer({{ item | tojson | safe }})'>
+                                    <td><span class="schema-pill">{{ item.table_name }}</span></td>
+                                    <td>
+                                        <div class="fw-800" style="color: var(--text-color); font-size: 0.88rem;">{{ item.display_name }}</div>
+                                        <div class="text-muted extra-small" style="font-size: 0.75rem;">{{ item.description }}</div>
+                                    </td>
+                                    <td><span class="text-muted fw-700">#{{ item.id }}</span></td>
+                                    <td class="text-center" onclick="event.stopPropagation();">
+                                        <button class="btn-cci py-1 px-3" onclick='openSchemaDrawer({{ item | tojson | safe }})'>
+                                            <i class="fa-solid fa-code me-1 text-muted"></i> Inspect Columns
+                                        </button>
+                                    </td>
+                                </tr>
+                                {% endfor %}
+                            </tbody>
+                        </table>
+                    </div>
+                    {% endif %}
+                </div>
+
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script>
+    function openSchemaDrawer(tableData) {
+        document.getElementById("drawerDisplayTitle").innerText = tableData.display_name || tableData.table_name;
+        document.getElementById("drawerSQLName").innerText = tableData.table_name;
+        document.getElementById("drawerDescription").innerText = tableData.description || "Auto-detected table from live NetSuite schema registry.";
+
+        // Populate ERD connections if pre-mapped
+        const connContainer = document.getElementById("connectionsContainer");
+        const connList = document.getElementById("connectionsList");
+        connList.innerHTML = "";
+
+        if (tableData.connections && tableData.connections.length > 0) {
+            connContainer.classList.remove("d-none");
+            tableData.connections.forEach(conn => {
+                const div = document.createElement("div");
+                div.className = "connection-box d-flex justify-content-between align-items-center";
+                div.innerHTML = `
+                    <div>
+                        <span class="fw-800 text-primary">${tableData.table_name}.${conn.field}</span>
+                        <i class="fa-solid fa-arrow-right-long mx-2 text-muted"></i>
+                        <span class="fw-800 text-dark" style="color: var(--text-color) !important;">${conn.target}</span>
+                    </div>
+                    <span class="badge bg-light text-muted border">${conn.type}</span>
+                `;
+                connList.appendChild(div);
+            });
+        } else {
+            connContainer.classList.add("d-none");
+        }
+
+        // Populate Sandbox Code
+        const sqlSnippet = `SELECT *\nFROM ${tableData.table_name}\nWHERE isinactive = 'F'\nORDER BY id DESC`;
+        document.getElementById("sqlSandboxCode").innerText = sqlSnippet;
+
+        // Reset Table UI states for AJAX load
+        document.getElementById("columnLoadingState").classList.remove("d-none");
+        document.getElementById("columnErrorState").classList.add("d-none");
+        document.getElementById("columnTableWrapper").classList.add("d-none");
+        document.getElementById("columnCountBadge").innerText = "Scanning...";
+
+        // Open Sheet
+        document.getElementById("schemaDrawer").classList.add("open");
+        document.getElementById("backdrop").classList.add("show");
+
+        // Execute AJAX Call to inspect live NetSuite database column names
+        fetch(`/api/inspect_table?table=${tableData.table_name}`)
+            .then(response => response.json())
+            .then(data => {
+                document.getElementById("columnLoadingState").classList.add("d-none");
+
+                if (data.status === "success") {
+                    document.getElementById("columnCountBadge").innerText = `${data.column_count} Columns Found`;
+                    const tbody = document.getElementById("columnTableBody");
+                    tbody.innerHTML = "";
+
+                    if (data.columns.length === 0) {
+                        document.getElementById("columnErrorState").innerText = "Table exists in schema, but currently holds zero rows. (Add 1 sample record in NetSuite to reveal column key structures).";
+                        document.getElementById("columnErrorState").classList.remove("d-none");
+                    } else {
+                        data.columns.forEach((col, idx) => {
+                            const tr = document.createElement("tr");
+                            tr.innerHTML = `
+                                <td class="text-muted fw-700">${idx + 1}</td>
+                                <td><span class="fw-800 text-primary" style="font-family: monospace;">${col}</span></td>
+                                <td><code style="font-size: 0.75rem; background: var(--body-bg); padding: 2px 6px; border-radius: 4px; border: 1px solid var(--bento-border); color: var(--text-color);">${tableData.table_name}.${col}</code></td>
+                            `;
+                            tbody.appendChild(tr);
+                        });
+                        document.getElementById("columnTableWrapper").classList.remove("d-none");
+                    }
+                } else {
+                    document.getElementById("columnCountBadge").innerText = "Inspection Blocked";
+                    document.getElementById("columnErrorState").innerText = data.message || "Failed to inspect schema columns.";
+                    document.getElementById("columnErrorState").classList.remove("d-none");
+                }
+            })
+            .catch(error => {
+                document.getElementById("columnLoadingState").classList.add("d-none");
+                document.getElementById("columnErrorState").innerText = "Network failure while reaching inspection API.";
+                document.getElementById("columnErrorState").classList.remove("d-none");
+            });
+    }
+
+    function closeSchemaDrawer() {
+        document.getElementById("schemaDrawer").classList.remove("open");
+        document.getElementById("backdrop").classList.remove("show");
+    }
+
+    function copySQLSnippet() {
+        const text = document.getElementById("sqlSandboxCode").innerText;
+        navigator.clipboard.writeText(text);
+        alert("SQL query copied to clipboard!");
+    }
+</script>
+{% endblock %}

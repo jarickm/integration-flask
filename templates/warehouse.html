@@ -1,0 +1,701 @@
+<!-- templates/warehouse.html -->
+{% extends "base.html" %}
+
+{% block content %}
+<style>
+    /* Bento Panel Design Layout */
+    .bento-card {
+        background: var(--bento-bg);
+        border: 1px solid var(--bento-border);
+        border-radius: 20px;
+        padding: 24px;
+        box-shadow: 0 4px 20px rgba(0,0,0,0.01);
+        transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+    .bento-card:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 8px 30px rgba(0,0,0,0.03);
+    }
+
+    .metric-title {
+        font-size: 0.75rem;
+        color: var(--text-muted);
+        font-weight: 800;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        margin-bottom: 6px;
+    }
+    .metric-value {
+        font-size: 1.8rem;
+        font-weight: 800;
+        color: var(--text-color);
+        letter-spacing: -0.5px;
+    }
+    .metric-footer {
+        margin-top: 10px;
+        font-size: 0.72rem;
+        font-weight: 700;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+    }
+
+    /* Explanation Banner card styling */
+    .workflow-info-card {
+        background: rgba(20, 184, 166, 0.05);
+        border: 1px dashed rgba(20, 184, 166, 0.25);
+        border-radius: 14px;
+        padding: 16px 20px;
+    }
+
+    /* Standardized Premium Action Buttons */
+    .btn-cci {
+        background: var(--bento-bg);
+        border: 1px solid var(--glass-border);
+        border-radius: 12px;
+        color: var(--text-color);
+        padding: 10px 18px;
+        font-size: 0.8rem;
+        font-weight: 700;
+        display: inline-flex;
+        align-items: center;
+        gap: 8px;
+        box-shadow: 0 2px 8px rgba(0, 0, 0, 0.02);
+        transition: var(--transition);
+        cursor: pointer;
+    }
+    .btn-cci:hover {
+        background: var(--primary);
+        color: white !important;
+        border-color: var(--primary);
+    }
+    .btn-cci:disabled {
+        opacity: 0.4;
+        cursor: not-allowed;
+        background: var(--body-bg) !important;
+        color: var(--text-muted) !important;
+        border-color: var(--bento-border) !important;
+    }
+
+    /* Filter Strip styling */
+    .filter-bar {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+        align-items: center;
+    }
+    .filter-input {
+        background: var(--body-bg);
+        border: 1px solid var(--bento-border);
+        border-radius: 12px;
+        padding: 9px 14px;
+        font-size: 0.8rem;
+        font-weight: 600;
+        outline: none;
+        color: var(--text-color);
+        transition: all 0.2s ease;
+    }
+    .filter-input:focus {
+        border-color: var(--primary);
+        box-shadow: 0 0 0 3px rgba(99, 102, 241, 0.15);
+    }
+
+    /* Status workflow badges */
+    .status-badge {
+        font-size: 0.68rem;
+        font-weight: 800;
+        padding: 4px 10px;
+        border-radius: 20px;
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        text-transform: uppercase;
+        letter-spacing: 0.5px;
+    }
+    .badge-pending { background-color: var(--bg-blue); color: var(--c-blue); }
+    .badge-passed { background-color: var(--bg-green); color: var(--c-green); }
+    .badge-quarantine { background-color: var(--bg-red); color: var(--c-red); }
+    .badge-shortage { background-color: var(--bg-orange); color: var(--c-orange); }
+
+    /* Interactive Table row clickable layouts */
+    .clickable-row {
+        cursor: pointer;
+        transition: background-color 0.15s ease-in-out;
+    }
+    .clickable-row:hover td {
+        background-color: var(--body-bg) !important;
+    }
+
+    /* --- FULL WORKSPACE OVERLAY SHEET --- */
+    .saas-drawer {
+        position: fixed;
+        top: 0;
+        right: -100%;
+        width: calc(100% - 290px);
+        height: 100vh;
+        background: var(--bento-bg);
+        border-left: 1px solid var(--bento-border);
+        box-shadow: -15px 0 45px rgba(0, 0, 0, 0.06);
+        z-index: 2100;
+        padding: 40px;
+        transition: right 0.35s cubic-bezier(0.16, 1, 0.3, 1);
+        display: flex;
+        flex-direction: column;
+    }
+    .saas-drawer.open {
+        right: 0;
+    }
+    .drawer-backdrop {
+        position: fixed;
+        top: 0; left: 0; width: 100vw; height: 100vh;
+        background: rgba(15, 23, 42, 0.2);
+        backdrop-filter: blur(4px);
+        -webkit-backdrop-filter: blur(4px);
+        display: none;
+        z-index: 2050;
+    }
+    .drawer-backdrop.show {
+        display: block;
+    }
+
+    @media (max-width: 992px) {
+        .saas-drawer {
+            width: 100%;
+        }
+    }
+
+    /* Ledger table style overrides */
+    .coolaire-table th {
+        font-size: 0.72rem;
+        text-transform: uppercase;
+        letter-spacing: 0.8px;
+        color: var(--text-muted);
+        border-bottom: 2px solid var(--bento-border);
+        padding: 16px 14px;
+        background-color: var(--bento-bg);
+        font-weight: 800;
+    }
+    .coolaire-table td {
+        padding: 16px 14px;
+        border-bottom: 1px solid var(--bento-border);
+        font-size: 0.85rem;
+        vertical-align: middle;
+        color: var(--text-color);
+    }
+    .coolaire-table tr:last-child td {
+        border-bottom: none;
+    }
+</style>
+
+<!-- Slide Drawer Backdrop -->
+<div class="drawer-backdrop" id="backdrop" onclick="closeWorkflowDrawer()"></div>
+
+<!-- Slide Drawer Panel (Full Workspace Layout) -->
+<div class="saas-drawer" id="workflowDrawer">
+    <div class="d-flex justify-content-between align-items-center pb-3 mb-4 border-bottom">
+        <div>
+            <h4 class="fw-800 m-0" style="font-size: 1.3rem; color: var(--text-color); letter-spacing: -0.5px;">Receiving & Inbound Inspection Audit</h4>
+            <span id="drawerTitleID" class="text-muted fw-700 small" style="font-size: 0.75rem;">Receipt No: #0000</span>
+        </div>
+        <button class="btn-close" style="font-size: 0.85rem;" onclick="closeWorkflowDrawer()"></button>
+    </div>
+
+    <!-- Multi-Column Grid Layout inside the Wide Workspace Sheet -->
+    <form id="drawerTaskForm" onsubmit="commitTaskForm(event)" class="d-flex flex-column gap-4 overflow-y-auto pe-1" style="flex-grow: 1;">
+        <input type="hidden" name="receipt_id" id="taskReceiptId">
+
+        <!-- Standard Read-Only NetSuite Parameters -->
+        <div class="p-3 mb-1 border rounded-3" style="background: var(--body-bg); border-color: var(--bento-border) !important;">
+            <div class="row g-3">
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Source PO / TO</span>
+                    <strong id="taskSourcePO" class="text-dark small d-block" style="font-size: 0.85rem; color: var(--text-color) !important;">Loading...</strong>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Vendor / Origin</span>
+                    <strong id="taskSupplier" class="text-dark small d-block text-truncate" style="font-size: 0.85rem; color: var(--text-color) !important;">Loading...</strong>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Acquisition Value</span>
+                    <strong id="taskValue" class="text-dark small d-block" style="font-size: 0.85rem; color: var(--text-color) !important;">₱0.00</strong>
+                </div>
+                <div class="col-md-3 col-sm-6">
+                    <span class="d-block text-uppercase text-muted fw-800 mb-1" style="font-size: 0.6rem; letter-spacing: 0.5px;">Inbound Date</span>
+                    <strong id="taskDateReceived" class="text-dark small d-block" style="font-size: 0.85rem; color: var(--text-color) !important;">Loading...</strong>
+                </div>
+            </div>
+        </div>
+
+        <div class="row g-4">
+            <!-- Left Side Inputs -->
+            <div class="col-md-6 d-flex flex-column gap-3">
+                <div>
+                    <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Item Category Description</label>
+                    <input type="text" id="taskCategory" class="form-control filter-input w-100" style="background: var(--body-bg); color: var(--text-muted);" readonly>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Expected Qty (ERP)</label>
+                        <input type="text" id="taskExpectedQty" class="form-control filter-input w-100 fw-800" style="background: var(--body-bg); color: var(--text-muted);" readonly>
+                    </div>
+                    <div class="col-6">
+                        <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Verified Qty (Physical)</label>
+                        <input type="number" name="verified_qty" id="taskVerifiedQty" class="form-control filter-input w-100 fw-800" required>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Right Side Inputs -->
+            <div class="col-md-6 d-flex flex-column gap-3">
+                <div>
+                    <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">QC Verification Status</label>
+                    <select name="status" id="taskStatus" class="form-select filter-input w-100">
+                        <option value="Pending Inspection">Pending Inspection (Draft)</option>
+                        <option value="Passed">Passed (QC Cleared & Stocked)</option>
+                        <option value="Quarantined">Quarantined (Defects / Damaged)</option>
+                        <option value="Shortage">Shortage (Receiving Dispute Raised)</option>
+                    </select>
+                </div>
+
+                <div class="row g-3">
+                    <div class="col-6">
+                        <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Receiving Temp (°C)</label>
+                        <input type="number" step="0.1" name="temp_recorded" id="taskTemp" class="form-control filter-input w-100 fw-800" required>
+                    </div>
+                    <div class="col-6">
+                        <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">QC Inspector</label>
+                        <select name="inspector" id="taskInspector" class="form-select filter-input w-100">
+                            <option value="Unassigned">Unassigned</option>
+                            <option value="Quality Admin (Cold Chain)">Quality Admin (Cold Chain)</option>
+                            <option value="IT Support Desk Team">IT Support Desk Team</option>
+                            <option value="Logistics Fleet Manager">Logistics Fleet Manager</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div>
+            <label class="fw-800 small text-uppercase text-muted d-block mb-1" style="font-size: 0.65rem; letter-spacing: 0.5px;">Shipment Discrepancy & Storage Log Notes</label>
+            <textarea name="notes" id="taskNotes" class="form-control filter-input w-100" style="height: 140px;" placeholder="Add physical verification logs, temperature graph reviews, or bin numbers..."></textarea>
+        </div>
+
+        <div class="mt-auto pt-4 border-top">
+            <button type="submit" class="btn w-100 fw-800 py-3" style="background: var(--primary); color: white; border: none; border-radius: 12px; font-size: 0.9rem;">
+                <i class="fa-solid fa-cloud-arrow-up me-2"></i> Save Status Updates
+            </button>
+        </div>
+    </form>
+</div>
+
+<!-- Header Controls Area -->
+<div class="row g-4 align-items-center mb-4">
+    <div class="col-md-6">
+        <h2 class="fw-800 m-0" style="letter-spacing: -1px; font-size: 1.5rem; color: var(--text-color);">Warehouse receiving entry Ledger</h2>
+        <p class="text-muted small m-0 mt-1" style="font-size: 0.82rem; font-weight: 500;">Run inbound physical quantity checks and record storage temperatures.</p>
+    </div>
+    <div class="col-md-6 text-md-end d-flex justify-content-md-end gap-2">
+        <button class="btn-cci" onclick="exportQueueToCSV()"><i class="fa-solid fa-file-export text-muted"></i> Export CSV</button>
+        <button class="btn-cci" onclick="window.location.reload()"><i class="fa-solid fa-arrows-rotate text-muted"></i> Sync Now</button>
+    </div>
+</div>
+
+{% if is_mock_data %}
+<div class="alert alert-warning border-0 shadow-sm d-flex align-items-center gap-3 py-3 px-4 mb-4" style="background: var(--bg-yellow); border-radius: 12px; border: 1px solid var(--bento-border) !important;">
+    <i class="fa-solid fa-triangle-exclamation text-warning fs-4"></i>
+    <div style="font-size: 0.82rem; color: var(--text-color); font-weight: 600;">
+        <strong>Local Mode Active:</strong> Operating using fallback data. Place your NetSuite PO/TO bundles to run queries.
+    </div>
+</div>
+{% endif %}
+
+<!-- Metrics Panel Layout -->
+<div class="row g-3 mb-4">
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Inbound Volume value</div>
+            <div class="metric-value mt-2">₱{{ "{:,.2f}".format(total_value) }}</div>
+            <div class="metric-footer text-muted"><i class="fa-solid fa-vault"></i> NetSuite Receipt Value</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Receiving Shipments</div>
+            <div class="metric-value mt-2">{{ entry_count }}</div>
+            <div class="metric-footer text-muted"><i class="fa-solid fa-truck-moving"></i> Inbound Transactions</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Pending QC Inspection</div>
+            <div class="metric-value mt-2" style="color: var(--c-blue);">{{ pending_count }}</div>
+            <div class="metric-footer text-primary"><i class="fa-solid fa-circle-exclamation"></i> Inspections Outstanding</div>
+        </div>
+    </div>
+    <div class="col-lg-3 col-sm-6">
+        <div class="bento-card">
+            <div class="metric-title">Quarantined Stock</div>
+            <div class="metric-value mt-2" style="color: var(--c-red);">{{ quarantined_count }}</div>
+            <div class="metric-footer text-danger"><i class="fa-solid fa-ban"></i> Blocked Inventory</div>
+        </div>
+    </div>
+</div>
+
+<!-- Doughnut Chart and Legend Panel -->
+<div class="row g-4 mb-4">
+    <div class="col-12">
+        <div class="bento-card">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h5 class="fw-800 m-0" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Inbound Shipment Value Concentration (Top 10 Receipts)</h5>
+                <span class="badge bg-light text-dark fw-800" style="font-size: 0.65rem; border: 1px solid var(--bento-border);">Proportional Value Share</span>
+            </div>
+
+            <div class="row align-items-center">
+                <div class="col-md-5 d-flex justify-content-center">
+                    <div style="height: 240px; width: 240px; position: relative;">
+                        <canvas id="highVolumeAdvancesChart"></canvas>
+                    </div>
+                </div>
+                <div class="col-md-7">
+                    <div class="row g-2" id="chartLegendContainer">
+                        <!-- Legend keys will auto-generate dynamically below via JavaScript -->
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Operational Ledger Block -->
+<div class="row g-4">
+    <div class="col-12">
+        <div class="bento-card">
+
+            <!-- Explanation Card block to clarify the 'Pending' default status -->
+            <div class="workflow-info-card d-flex align-items-start gap-3 mb-4">
+                <i class="fa-solid fa-circle-info text-primary mt-1" style="color: var(--c-teal) !important;"></i>
+                <div style="font-size: 0.8rem; color: var(--text-color); font-weight: 500;">
+                    <strong class="d-block mb-1" style="color: var(--c-teal);">Understanding QC Inspection Statuses</strong>
+                    Every item receipt synced from NetSuite defaults to a <strong>Pending Inspection</strong> state. Warehouse operators must open the record, physically verify the received quantities, check temperatures, and pass the shipment to update stock values.
+                </div>
+            </div>
+
+            <div class="d-flex justify-content-between align-items-center mb-4 flex-wrap gap-3">
+                <h5 class="fw-800 m-0" style="font-size: 0.85rem; text-transform: uppercase; letter-spacing: 0.5px; color: var(--text-muted);">Receiving Entry ledger Register</h5>
+
+                <div class="filter-bar">
+                    <div class="position-relative">
+                        <i class="fa-solid fa-magnifying-glass position-absolute text-muted" style="left: 12px; top: 50%; transform: translateY(-50%); font-size: 0.75rem;"></i>
+                        <input type="text" id="ledgerSearchInput" onkeyup="resetToFirstPageAndFilter()" class="filter-input ps-4" style="width: 250px;" placeholder="Filter by PO or Supplier...">
+                    </div>
+
+                    <select id="statusSelectFilter" onchange="resetToFirstPageAndFilter()" class="filter-input select-filter">
+                        <option value="">All Statuses</option>
+                        <option value="Pending Inspection">Pending Inspection</option>
+                        <option value="Passed">Passed</option>
+                        <option value="Quarantined">Quarantined</option>
+                        <option value="Shortage">Shortage</option>
+                    </select>
+
+                    <select id="classSelectFilter" onchange="resetToFirstPageAndFilter()" class="filter-input select-filter">
+                        <option value="">All Categories</option>
+                        <option value="Scroll Compressors">Scroll Compressors</option>
+                        <option value="Expansion Valves">Expansion Valves</option>
+                        <option value="PIR Insulation Panels">PIR Insulation Panels</option>
+                        <option value="Evaporator Blowers">Evaporator Blowers</option>
+                        <option value="R404A Gas Cylinders">R404A Gas Cylinders</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="table-responsive">
+                <table class="table coolaire-table m-0" id="ledgerTable">
+                    <thead>
+                        <tr>
+                            <th>Inbound ID</th>
+                            <th>Receipt Number</th>
+                            <th>Supplier Origin</th>
+                            <th>Receiving Temp</th>
+                            <th>QC Status</th>
+                            <th class="text-end">Verified / Expected</th>
+                            <th class="text-end">Shipment value</th>
+                            <th class="text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for item in entries %}
+                        <tr class="clickable-row" data-status="{{ item.status }}" data-class="{{ item.item_category }}" onclick='openWorkflowDrawer({{ item | tojson | safe }})'>
+                            <td><span class="text-muted fw-800">#{{ item.id }}</span></td>
+                            <td>
+                                <div class="fw-800" style="color: var(--text-color); font-size: 0.85rem;">{{ item.receipt_no }}</div>
+                                <div class="text-muted extra-small" style="font-size: 0.75rem; font-weight: 500;">Source: {{ item.source_po }}</div>
+                            </td>
+                            <td>
+                                <span class="fw-700 text-muted" style="font-size: 0.8rem;"><i class="fa-solid fa-warehouse me-1"></i> {{ item.supplier }}</span>
+                            </td>
+                            <td>
+                                <span class="fw-800 text-dark" style="font-size: 0.85rem;">{{ item.temp_recorded }}°C</span>
+                            </td>
+                            <td>
+                                {% if item.status == 'Pending Inspection' %}
+                                    <span class="status-badge badge-pending"><i class="fa-solid fa-hourglass-start"></i> Pending</span>
+                                {% elif item.status == 'Passed' %}
+                                    <span class="status-badge badge-passed"><i class="fa-solid fa-circle-check"></i> Passed</span>
+                                {% elif item.status == 'Quarantined' %}
+                                    <span class="status-badge badge-quarantine"><i class="fa-solid fa-ban"></i> Quarantined</span>
+                                {% elif item.status == 'Shortage' %}
+                                    <span class="status-badge badge-shortage"><i class="fa-solid fa-circle-exclamation"></i> Shortage</span>
+                                {% endif %}
+                            </td>
+                            <td class="text-end fw-800 text-muted" style="font-size: 0.85rem;">
+                                {{ item.verified_qty }} / {{ item.expected_qty }} pcs
+                            </td>
+                            <td class="text-end fw-800 text-success" style="font-size: 0.9rem;">
+                                ₱{{ "{:,.2f}".format(item.value) }}
+                            </td>
+                            <td class="text-center" onclick="event.stopPropagation();">
+                                <span class="text-muted" style="font-size: 0.95rem; cursor: pointer;" onclick='openWorkflowDrawer({{ item | tojson | safe }})'>
+                                    <i class="fa-solid fa-chevron-right"></i>
+                                </span>
+                            </td>
+                        </tr>
+                        {% else %}
+                        <tr>
+                            <td colspan="8" class="text-center py-5 text-muted fw-600" style="font-size: 0.85rem;">
+                                No inbound warehouse receipts match your filter parameters.
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- Modern Pagination controls panel -->
+            <div class="d-flex justify-content-between align-items-center mt-4 pt-3 border-top flex-wrap gap-2">
+                <span id="paginationInfo" class="fw-700 text-muted" style="font-size: 0.78rem;">Showing 1 to 5 of 10 entries</span>
+                <div class="d-flex gap-1" id="paginationControls">
+                    <button class="btn-cci py-1 px-3" id="btnPrev" onclick="navigatePage(-1)" style="font-size: 0.75rem;"><i class="fa-solid fa-chevron-left me-1"></i> Prev</button>
+                    <button class="btn-cci py-1 px-3" id="btnNext" onclick="navigatePage(1)" style="font-size: 0.75rem;">Next <i class="fa-solid fa-chevron-right ms-1"></i></button>
+                </div>
+            </div>
+
+        </div>
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+<script>
+    let initializedChart = null;
+
+    // Stateful pagination configuration
+    let currentPage = 1;
+    const recordsPerPage = 5;
+
+    function renderDynamicChart() {
+        const ctx = document.getElementById('highVolumeAdvancesChart').getContext('2d');
+        if (initializedChart) {
+            initializedChart.destroy();
+        }
+
+        const labels = {{ chart_labels | tojson | safe }};
+        const dataValues = {{ chart_data | tojson | safe }};
+
+        const paletteColors = [
+            '#14b8a6', '#0ea5e9', '#6366f1', '#a855f7', '#f97316',
+            '#ec4899', '#eab308', '#22c55e', '#64748b', '#475569'
+        ];
+
+        const isDarkMode = document.body.classList.contains('dark-mode');
+        const cutoutBorderColor = isDarkMode ? '#1e293b' : '#ffffff';
+
+        initializedChart = new Chart(ctx, {
+            type: 'doughnut',
+            data: {
+                labels: labels,
+                datasets: [{
+                    data: dataValues,
+                    backgroundColor: paletteColors,
+                    borderColor: cutoutBorderColor,
+                    borderWidth: 2,
+                    hoverOffset: 12
+                }]
+            },
+            options: {
+                responsive: true,
+                maintainAspectRatio: false,
+                cutout: '72%',
+                plugins: {
+                    legend: { display: false }
+                }
+            }
+        });
+
+        const legendContainer = document.getElementById('chartLegendContainer');
+        legendContainer.innerHTML = '';
+
+        labels.forEach((label, index) => {
+            const val = dataValues[index];
+            const color = paletteColors[index % paletteColors.length];
+
+            const itemElement = document.createElement('div');
+            itemElement.className = 'col-md-6 d-flex align-items-center mb-1';
+            itemElement.style.fontSize = '0.78rem';
+            itemElement.style.fontWeight = '700';
+            itemElement.innerHTML = `
+                <div style="width: 10px; height: 10px; border-radius: 50%; background-color: ${color}; margin-right: 8px; flex-shrink: 0;"></div>
+                <div class="text-truncate flex-grow-1" style="color: var(--text-color);" title="${label}">${label}</div>
+                <div class="text-muted ps-2" style="font-size:0.75rem;">₱${val.toLocaleString(undefined, {maximumFractionDigits: 0})}</div>
+            `;
+            legendContainer.appendChild(itemElement);
+        });
+    }
+
+    // Consolidated filtering and pagination execution
+    function updateWarehouseTableDisplay() {
+        const queryText = document.getElementById("ledgerSearchInput").value.toUpperCase();
+        const activeStatus = document.getElementById("statusSelectFilter").value;
+        const activeClass = document.getElementById("classSelectFilter").value;
+
+        const tableBody = document.getElementById("ledgerTable").getElementsByTagName("tbody")[0];
+        const rows = Array.from(tableBody.getElementsByTagName("tr"));
+
+        const matchingRows = rows.filter(row => {
+            if (row.cells.length < 5) return false;
+
+            const idColText = row.cells[0].textContent || row.cells[0].innerText;
+            const nameColText = row.cells[1].textContent || row.cells[1].innerText;
+            const rowStatus = row.getAttribute("data-status");
+            const rowClass = row.getAttribute("data-class");
+
+            const textSearchMatches = idColText.toUpperCase().includes(queryText) || nameColText.toUpperCase().includes(queryText);
+            const statusFilterMatches = !activeStatus || rowStatus === activeStatus;
+            const classFilterMatches = !activeClass || rowClass === activeClass;
+
+            return textSearchMatches && statusFilterMatches && classFilterMatches;
+        });
+
+        rows.forEach(r => r.style.display = "none");
+
+        const totalMatching = matchingRows.length;
+        const totalPages = Math.ceil(totalMatching / recordsPerPage) || 1;
+
+        if (currentPage > totalPages) {
+            currentPage = totalPages;
+        }
+
+        const startIndex = (currentPage - 1) * recordsPerPage;
+        const endIndex = Math.min(startIndex + recordsPerPage, totalMatching);
+
+        for (let i = startIndex; i < endIndex; i++) {
+            if (matchingRows[i]) {
+                matchingRows[i].style.display = "";
+            }
+        }
+
+        const paginationInfo = document.getElementById("paginationInfo");
+        if (totalMatching > 0) {
+            paginationInfo.innerText = `Showing ${startIndex + 1} to ${endIndex} of ${totalMatching} entries`;
+        } else {
+            paginationInfo.innerText = "No entries matching filters found";
+        }
+
+        document.getElementById("btnPrev").disabled = (currentPage === 1);
+        document.getElementById("btnNext").disabled = (currentPage === totalPages);
+    }
+
+    function navigatePage(direction) {
+        currentPage += direction;
+        updateWarehouseTableDisplay();
+    }
+
+    function resetToFirstPageAndFilter() {
+        currentPage = 1;
+        updateWarehouseTableDisplay();
+    }
+
+    document.addEventListener('DOMContentLoaded', () => {
+        renderDynamicChart();
+        updateWarehouseTableDisplay();
+    });
+
+    window.addEventListener('themeChanged', () => {
+        renderDynamicChart();
+    });
+
+    function openWorkflowDrawer(data) {
+        document.getElementById("taskReceiptId").value = data.id;
+        document.getElementById("drawerTitleID").innerText = "Receipt No: " + data.receipt_no;
+        document.getElementById("taskCategory").value = data.item_category;
+        document.getElementById("taskExpectedQty").value = data.expected_qty;
+        document.getElementById("taskVerifiedQty").value = data.verified_qty || data.expected_qty;
+
+        document.getElementById("taskSourcePO").innerText = data.source_po || "N/A";
+        document.getElementById("taskSupplier").innerText = data.supplier || "N/A";
+        document.getElementById("taskDateReceived").innerText = data.date_received || "N/A";
+        document.getElementById("taskValue").innerText = "₱" + data.value.toLocaleString(undefined, {minimumFractionDigits: 2});
+        document.getElementById("taskTemp").value = data.temp_recorded || 24.5;
+
+        document.getElementById("taskStatus").value = data.status || "Pending Inspection";
+        document.getElementById("taskInspector").value = data.inspector || "Unassigned";
+        document.getElementById("taskNotes").value = data.notes || "";
+
+        document.getElementById("workflowDrawer").classList.add("open");
+        document.getElementById("backdrop").classList.add("show");
+    }
+
+    function closeWorkflowDrawer() {
+        document.getElementById("workflowDrawer").classList.remove("open");
+        document.getElementById("backdrop").classList.add("show");
+    }
+
+    function commitTaskForm(event) {
+        event.preventDefault();
+        const formElement = document.getElementById("drawerTaskForm");
+        const payloadData = new FormData(formElement);
+
+        fetch("/api/update_warehouse", {
+            method: "POST",
+            body: payloadData
+        })
+        .then(res => res.json())
+        .then(result => {
+            if (result.status === "success") {
+                closeWorkflowDrawer();
+                window.location.reload();
+            } else {
+                alert("An error occurred: " + result.message);
+            }
+        })
+        .catch(err => {
+            console.error("Local SQLite DB interface error:", err);
+        });
+    }
+
+    function exportQueueToCSV() {
+        const table = document.getElementById("ledgerTable");
+        const rows = table.querySelectorAll("tr");
+        let csvLines = [];
+
+        for (let i = 0; i < rows.length; i++) {
+            if (rows[i].style.display === "none") continue;
+
+            let rowArray = [], cells = rows[i].querySelectorAll("td, th");
+            for (let j = 0; j < cells.length - 1; j++) {
+                let formattedCell = cells[j].innerText.replace(/,/g, "").replace(/\n/g, " ").trim();
+                rowArray.push('"' + formattedCell + '"');
+            }
+            csvLines.push(rowArray.join(","));
+        }
+
+        const csvData = new Blob([csvLines.join("\n")], { type: "text/csv" });
+        const triggerLink = document.createElement("a");
+        triggerLink.download = "CCI_Warehouse_Receiving_Report.csv";
+        triggerLink.href = window.URL.createObjectURL(csvData);
+        triggerLink.style.display = "none";
+        document.body.appendChild(triggerLink);
+        triggerLink.click();
+        document.body.removeChild(triggerLink);
+    }
+</script>
+{% endblock %}
